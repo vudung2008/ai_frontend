@@ -8,11 +8,14 @@ export interface StoreState {
     setAccessToken: (token: string | null) => void;
     user: User | null;
     setUser: (user: User | null) => void;
+    isLogin: boolean;
+    setIsLogin: (v: boolean) => void;
 }
 
 export const StoreProvider = ({ children }: { children: ReactNode }) => {
     const [accessToken, setAccessToken] = useState<string | null>(null);
     const [user, setUser] = useState<User | null>(null);
+    const [isLogin, setIsLogin] = useState<boolean>(false);
 
     // đồng bộ state với globalStore
     const setAccessTokenSync = (token: string | null) => {
@@ -21,7 +24,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
     };
 
     return (
-        <StoreContext.Provider value={{ accessToken, setAccessToken: setAccessTokenSync, user, setUser }}>
+        <StoreContext.Provider value={{ accessToken, setAccessToken: setAccessTokenSync, user, setUser, isLogin, setIsLogin }}>
             {children}
         </StoreContext.Provider>
     );

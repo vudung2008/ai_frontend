@@ -2,6 +2,7 @@
 import { useStore } from "./useStore";
 import { api, type CustomAxiosRequestConfig } from "../utils/api";
 import secureStorage from "react-secure-storage";
+import { AxiosError } from "axios";
 
 export interface SignInData {
     username: string;
@@ -58,7 +59,13 @@ export const useAuth = () => {
     const signout = async () => {
         try {
             const isMobile = /Mobi|Android/i.test(navigator.userAgent);
-            await api.post("/auth/signout", null, { skipAuth: true } as CustomAxiosRequestConfig);
+            const data: {
+                refreshToken?: string | null;
+            } = {};
+            if (isMobile) {
+                data.refreshToken = secureStorage.getItem("refreshToken") as string | null;
+            }
+            await api.post("/auth/signout", data, { skipAuth: true } as CustomAxiosRequestConfig);
             if (isMobile) {
                 secureStorage.removeItem("refreshToken");
             }
@@ -73,10 +80,21 @@ export const useAuth = () => {
 
     const refresh = async () => {
         try {
-            const res = await api.post("/auth/refresh", null, { skipAuth: true } as CustomAxiosRequestConfig);
-            setAccessToken(res.data.accessToken);
+            const isMobile = /Mobi|Android/i.test(navigator.userAgent);
+            const data: {
+                refreshToken?: string | null;
+            } = {};
+            if (isMobile) {
+                data.refreshToken = secureStorage.getItem("refreshToken") as string | null;
+            }
+            const res = await api.post("/auth/refresh", data, { skipAuth: true } as CustomAxiosRequestConfig);
+            await setAccessToken(res.data.accessToken);
             return true;
         } catch (error) {
+            if (error instanceof AxiosError && error.response && error.response.status === 401) {
+                // Refresh token không hợp lệ hoặc hết hạn
+                secureStorage.removeItem("refreshToken");
+            }
             setAccessToken(null);
             console.error("Token refresh failed", error);
             return false;

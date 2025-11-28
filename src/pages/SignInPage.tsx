@@ -2,6 +2,7 @@
 import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { type SignInData, useAuth } from "../store/useAuth";
+import { useStore } from '../store/useStore'
 
 interface SignInErrors {
     username?: boolean;
@@ -10,6 +11,7 @@ interface SignInErrors {
 
 const SignInPage = () => {
     const { signin } = useAuth();
+    const { setIsLogin } = useStore();
     const navigator = useNavigate();
     const usernameRef = useRef<HTMLInputElement>(null);
     const passwordRef = useRef<HTMLInputElement>(null);
@@ -42,8 +44,10 @@ const SignInPage = () => {
             return;
         }
         const isSuccess = await signin(formData);
-        if (isSuccess)
+        if (isSuccess) {
+            setIsLogin(true);
             navigator('/home');
+        }
         setLoading(false);
     }
 

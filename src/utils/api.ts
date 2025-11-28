@@ -15,12 +15,11 @@ export const api = axios.create({
 // Hàm refresh access token riêng
 export const refreshAccessToken = async (): Promise<string | null> => {
     try {
+        const isMobile = /Mobi|Android/i.test(navigator.userAgent);
         const refreshToken = secureStorage.getItem("refreshToken") as string | null;
-        if (!refreshToken) return null;
+        if (!refreshToken && isMobile) return null;
 
-        const res = await api.post("/auth/refresh", null, {
-            headers: { Authorization: `Bearer ${refreshToken}` },
-        });
+        const res = await api.post("/auth/refresh", { refreshToken });
 
         const newAccessToken = res.data.accessToken;
         setAccessTokenGlobal(newAccessToken);
@@ -57,22 +56,22 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
     res => res,
     async (error) => {
-        const originalRequest = error.config as CustomAxiosRequestConfig & { _retry?: boolean };
-        // Nếu request này không cần auth, bỏ qua
-        if (originalRequest.skipAuth) {
-            return Promise.reject(error);
-        }
+        const original = error.config as CustomAxiosRequestConfig & { _retry?: boolean };
 
-        if (error.response?.status === 401 && !originalRequest._retry) {
-            originalRequest._retry = true;
-            const newAccessToken = await refreshAccessToken();
-            if (newAccessToken) {
-                originalRequest.headers!['Authorization'] = `Bearer ${newAccessToken}`;
-                return api(originalRequest);
-            } else {
-                window.location.href = '/signin';
-                return Promise.reject(error);
+        if (original.skipAuth) return Promise.reject(error);
+
+        if (error.response?.status === 401 && !original._retry) {
+            original._retry = true;
+
+            const newToken = await refreshAccessToken();
+            if (!newToken) {
+                window.location.href = "/signin";
+                return;
             }
+
+            original.headers = original.headers ?? {};
+            original.headers['Authorization'] = `Bearer ${newToken}`;
+            return api(original);
         }
 
         return Promise.reject(error);
